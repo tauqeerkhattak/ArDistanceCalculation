@@ -5,16 +5,23 @@ import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.eusopht.ardistancecalculation.utils.Constants
+import com.google.android.filament.Box
+import com.google.android.filament.MaterialInstance
 import com.google.ar.core.Anchor
 import com.google.ar.core.Config
 import com.google.ar.core.Plane
 import com.google.ar.core.TrackingState
+import com.google.ar.sceneform.rendering.Material
+import dev.romainguy.kotlin.math.Float3
+
 import io.github.sceneview.ar.ARSceneView
-import io.github.sceneview.ar.arcore.getUpdatedPlanes
 import io.github.sceneview.ar.node.AnchorNode
+import io.github.sceneview.collision.Quaternion
+import io.github.sceneview.collision.Vector3
 import io.github.sceneview.gesture.GestureDetector
-import io.github.sceneview.math.Position
+import io.github.sceneview.math.Rotation
 import io.github.sceneview.node.ModelNode
+import io.github.sceneview.node.Node
 import kotlinx.coroutines.launch
 
 
@@ -75,6 +82,7 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
                 if (trackable is Plane && trackable.isPoseInPolygon(hitResult.hitPose)) {
                     println("Adding anchor node!")
                     addAnchorNode(hitResult.createAnchor())
+                    println("After Adding anchor node!")
                     break
                 }
             }
@@ -82,13 +90,17 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
     }
 
     private fun addAnchorNode(anchor: Anchor) {
-        if (firstAnchorNode != null && secondAnchorNode == null) {
-            return
+        println("FIRST: ${firstAnchorNode != null} SECOND: ${secondAnchorNode != null}")
+        if (firstAnchorNode != null && secondAnchorNode != null) {
+            firstAnchorNode?.detachAnchor()
+            secondAnchorNode?.detachAnchor()
+            firstAnchorNode = null
+            secondAnchorNode = null
         }
         sceneView.addChildNode(
             AnchorNode(sceneView.engine, anchor)
                 .apply {
-                    isEditable = true
+                    isEditable = false
                     lifecycleScope.launch {
                         isLoading = true
                         val anchorUrl = if (firstAnchorNode == null) { Constants.anchorStartUrl } else { Constants.anchorEndUrl }
@@ -102,6 +114,7 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
                         firstAnchorNode = this
                     } else if (secondAnchorNode == null) {
                         secondAnchorNode = this
+                        drawLineBetween()
                     }
                 }
         )
@@ -113,10 +126,8 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
         )?.let { modelInstance ->
             return ModelNode(
                 modelInstance = modelInstance,
-                // Scale to fit in a 0.5 meters cube
                 scaleToUnits = 0.15f,
-                // Bottom origin instead of center so the model base is on floor
-                centerOrigin = Position(y = -0.5f)
+//                centerOrigin = Position(y = -0.5f)
             ).apply {
                 isEditable = false
             }
@@ -124,18 +135,47 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
         return null
     }
 
-//    suspend fun buildViewNode(): ViewNode? {
-//        return withContext(Dispatchers.Main) {
-//            val engine = sceneView.engine
-//            val materialLoader = sceneView.materialLoader
-//            val windowManager = sceneView.viewNodeWindowManager ?: return@withContext null
-//            val view = LayoutInflater.from(materialLoader.context).inflate(R.layout.view_node_label, null, false)
-//            val ViewAttachmentManager(context, this).apply { onResume() }
-//            val viewNode = ViewNode(engine, windowManager, materialLoader, view, true, true)
-//            viewNode.position = Position(0f, -0.2f, 0f)
-//            anchorNodeView = view
-//            viewNode
-//        }
-//    }
+    private fun drawLineBetween() {
+        if (firstAnchorNode == null || secondAnchorNode == null) {
+            println("BOTH ARE NULL")
+            return
+        }
+        println("DRAWING")
+        // Get the position of the two nodes
+        val startPos = firstAnchorNode!!.worldPosition
+        val endPos = secondAnchorNode!!.worldPosition
+        val startVector = Vector3()
+        startVector.x = startPos.x
+        startVector.y = startPos.y
+        startVector.z = startVector.z
+
+        val endVector = Vector3()
+        endVector.x = endPos.x
+        endVector.y = endPos.y
+        endVector.z = endVector.z
+
+        // Calculate the direction and length of the line
+        val difference = Vector3.subtract(endVector, startVector)
+        val length = difference.length()
+
+        // Calculate the center point between the two nodes
+        val centerPos = Vector3.add(startVector, endVector).scaled(0.5f)
+        val lineNode = Node(sceneView.engine)
+
+        sceneView.addChildNode(
+            AnchorNode(sceneView.engine, firstAnchorNode!!.anchor)
+                .apply {
+                    isEditable = false
+                    lifecycleScope.launch {
+                        val rotation = Quaternion.lookRotation(difference.normalized(), Vector3.up())
+                        buildModelNode(anchorUrl)?.let { it : ModelNode ->
+                            it.position = Float3(centerPos.x, centerPos.y, centerPos.z)
+                            it.worldRotation = Rotation(rotation.x, rotation.y, rotation.z)
+                            addChildNode(it)
+                        }
+                    }
+                }
+        )
+    }
 
 }
