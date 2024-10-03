@@ -114,7 +114,7 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
             return ModelNode(
                 modelInstance = modelInstance,
                 // Scale to fit in a 0.5 meters cube
-                scaleToUnits = 0.05f,
+                scaleToUnits = 0.15f,
                 // Bottom origin instead of center so the model base is on floor
                 centerOrigin = Position(y = -0.5f)
             ).apply {
