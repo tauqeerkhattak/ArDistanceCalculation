@@ -1,28 +1,26 @@
 package com.eusopht.ardistancecalculation
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.eusopht.ardistancecalculation.utils.Constants
-import com.google.android.filament.Box
-import com.google.android.filament.MaterialInstance
 import com.google.ar.core.Anchor
 import com.google.ar.core.Config
 import com.google.ar.core.Plane
+import com.google.ar.core.Pose
 import com.google.ar.core.TrackingState
-import com.google.ar.sceneform.rendering.Material
 import dev.romainguy.kotlin.math.Float3
+import dev.romainguy.kotlin.math.pow
 
 import io.github.sceneview.ar.ARSceneView
 import io.github.sceneview.ar.node.AnchorNode
-import io.github.sceneview.collision.Quaternion
-import io.github.sceneview.collision.Vector3
 import io.github.sceneview.gesture.GestureDetector
-import io.github.sceneview.math.Rotation
 import io.github.sceneview.node.ModelNode
-import io.github.sceneview.node.Node
 import kotlinx.coroutines.launch
+import java.util.Locale
+import kotlin.math.sqrt
 
 
 class MainActivity : AppCompatActivity(R.layout.activity_main) {
@@ -69,7 +67,6 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
                 print("REASON: $reason")
             }
         }
-//        sceneView.viewNodeWindowManager = ViewAttachmentManager(context, this).apply { onResume() }
     }
 
     private fun handleDoubleTap(event: MotionEvent) {
@@ -97,36 +94,36 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
             firstAnchorNode = null
             secondAnchorNode = null
         }
+        addAnchor(anchor, Constants.anchorEndUrl, 0.15f)
+        drawLineBetween(firstAnchorNode, secondAnchorNode)
+    }
+
+    private fun addAnchor(anchor: Anchor, anchorUrl: String, scale: Float) {
         sceneView.addChildNode(
             AnchorNode(sceneView.engine, anchor)
                 .apply {
                     isEditable = false
                     lifecycleScope.launch {
-                        isLoading = true
-                        val anchorUrl = if (firstAnchorNode == null) { Constants.anchorStartUrl } else { Constants.anchorEndUrl }
-                        buildModelNode(anchorUrl)?.let { it : ModelNode ->
+                        buildModelNode(anchorUrl, scale)?.let { it : ModelNode ->
                             addChildNode(it)
                         }
-//                        buildViewNode()?.let { addChildNode(it) }
-                        isLoading = false
                     }
                     if (firstAnchorNode == null) {
                         firstAnchorNode = this
                     } else if (secondAnchorNode == null) {
                         secondAnchorNode = this
-                        drawLineBetween()
                     }
                 }
         )
     }
 
-    private suspend fun buildModelNode(anchorUrl: String): ModelNode? {
+    private suspend fun buildModelNode(anchorUrl: String, scale: Float): ModelNode? {
         sceneView.modelLoader.loadModelInstance(
             anchorUrl
         )?.let { modelInstance ->
             return ModelNode(
                 modelInstance = modelInstance,
-                scaleToUnits = 0.15f,
+                scaleToUnits = scale,
 //                centerOrigin = Position(y = -0.5f)
             ).apply {
                 isEditable = false
@@ -135,47 +132,81 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
         return null
     }
 
-    private fun drawLineBetween() {
-        if (firstAnchorNode == null || secondAnchorNode == null) {
+    private fun drawLineBetween(anchor1: AnchorNode?, anchor2: AnchorNode?) {
+        if (anchor1 == null || anchor2 == null) {
             println("BOTH ARE NULL")
             return
         }
-        println("DRAWING")
-        // Get the position of the two nodes
-        val startPos = firstAnchorNode!!.worldPosition
-        val endPos = secondAnchorNode!!.worldPosition
-        val startVector = Vector3()
-        startVector.x = startPos.x
-        startVector.y = startPos.y
-        startVector.z = startVector.z
-
-        val endVector = Vector3()
-        endVector.x = endPos.x
-        endVector.y = endPos.y
-        endVector.z = endVector.z
-
-        // Calculate the direction and length of the line
-        val difference = Vector3.subtract(endVector, startVector)
-        val length = difference.length()
-
-        // Calculate the center point between the two nodes
-        val centerPos = Vector3.add(startVector, endVector).scaled(0.5f)
-        val lineNode = Node(sceneView.engine)
-
-        sceneView.addChildNode(
-            AnchorNode(sceneView.engine, firstAnchorNode!!.anchor)
-                .apply {
-                    isEditable = false
-                    lifecycleScope.launch {
-                        val rotation = Quaternion.lookRotation(difference.normalized(), Vector3.up())
-                        buildModelNode(anchorUrl)?.let { it : ModelNode ->
-                            it.position = Float3(centerPos.x, centerPos.y, centerPos.z)
-                            it.worldRotation = Rotation(rotation.x, rotation.y, rotation.z)
-                            addChildNode(it)
-                        }
-                    }
-                }
+        val position1 = anchor1.worldPosition
+        val position2 = anchor2.worldPosition
+        val midpoint = Float3(
+            (position1.x + position2.x) / 2,
+            (position1.y + position2.y) / 2,
+            (position1.z + position2.z) / 2,
         )
+        val anchor = sceneView.session!!.createAnchor(Pose.makeTranslation(midpoint.toFloatArray()))
+        addAnchor(anchor, Constants.cube, 0.015f)
+        val firstPose = anchor1.pose
+        val secondPose = anchor2.pose
+        val dx = secondPose.tx() - firstPose.tx()
+        val dy = secondPose.ty() - firstPose.ty()
+        val dz = secondPose.tz() - firstPose.tz()
+        val sum = pow(dx, 2f) + pow(dy , 2f) + pow(dz, 2f)
+        val distance = sqrt(sum) * 100
+        if (distance > 10) {
+            val newAnchorNode = AnchorNode(sceneView.engine, anchor)
+            drawLineBetween(anchor1, newAnchorNode)
+            drawLineBetween(newAnchorNode, anchor2)
+        }
+        /*val message = String.format(Locale("en"),"%.4f", distance)
+        AlertDialog
+            .Builder(this)
+            .setMessage("Distance: $message cm")
+            .setPositiveButton("Okay") { dialog, b ->
+                dialog.dismiss()
+            }.setOnDismissListener {
+                firstAnchorNode?.detachAnchor()
+                secondAnchorNode?.detachAnchor()
+                firstAnchorNode = null
+                secondAnchorNode = null
+            }.show() */
+
+        // Get the position of the two nodes
+//        val startPos = firstAnchorNode!!.worldPosition
+//        val endPos = secondAnchorNode!!.worldPosition
+//        val startVector = Vector3()
+//        startVector.x = startPos.x
+//        startVector.y = startPos.y
+//        startVector.z = startVector.z
+//
+//        val endVector = Vector3()
+//        endVector.x = endPos.x
+//        endVector.y = endPos.y
+//        endVector.z = endVector.z
+//
+//        // Calculate the direction and length of the line
+//        val difference = Vector3.subtract(endVector, startVector)
+//        val length = difference.length()
+//
+//        // Calculate the center point between the two nodes
+//        val centerPos = Vector3.add(startVector, endVector).scaled(0.5f)
+//        val rotation = Quaternion.lookRotation(difference.normalized(), Vector3.up())
+//        val pose = sceneView.frame!!.camera.pose
+//        val anchor = sceneView.session!!.createAnchor(pose)
+//        sceneView.addChildNode(
+//            AnchorNode(sceneView.engine, anchor)
+//                .apply {
+//                    isEditable = false
+//                    lifecycleScope.launch {
+//                        val url = Constants.MID_POINT_URL
+//                        buildModelNode(url)?.let { it : ModelNode ->
+//                            it.position = Float3(centerPos.x, centerPos.y, centerPos.z)
+//                            it.worldRotation = Rotation(rotation.x, rotation.y, rotation.z)
+//                            addChildNode(it)
+//                        }
+//                    }
+//                }
+//        )
     }
 
 }
