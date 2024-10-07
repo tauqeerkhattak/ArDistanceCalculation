@@ -1,6 +1,5 @@
 package com.eusopht.ardistancecalculation
 
-import android.app.AlertDialog
 import android.os.Bundle
 import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
@@ -12,14 +11,16 @@ import com.google.ar.core.Plane
 import com.google.ar.core.Pose
 import com.google.ar.core.TrackingState
 import dev.romainguy.kotlin.math.Float3
+import dev.romainguy.kotlin.math.Quaternion
 import dev.romainguy.kotlin.math.pow
 
 import io.github.sceneview.ar.ARSceneView
 import io.github.sceneview.ar.node.AnchorNode
+import io.github.sceneview.collision.Vector3
 import io.github.sceneview.gesture.GestureDetector
+import io.github.sceneview.math.Rotation
 import io.github.sceneview.node.ModelNode
 import kotlinx.coroutines.launch
-import java.util.Locale
 import kotlin.math.sqrt
 
 
@@ -28,7 +29,7 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
     private lateinit var sceneView: ARSceneView
     private var firstAnchorNode: AnchorNode? = null
     private var secondAnchorNode: AnchorNode? = null
-    private var isLoading = false
+    private var boxes: List<AnchorNode?> = listOf(null)
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -94,17 +95,17 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
             firstAnchorNode = null
             secondAnchorNode = null
         }
-        addAnchor(anchor, Constants.anchorEndUrl, 0.15f)
+        addAnchor(anchor, Constants.MAP_PIN, 0.15f)
         drawLineBetween(firstAnchorNode, secondAnchorNode)
     }
 
-    private fun addAnchor(anchor: Anchor, anchorUrl: String, scale: Float) {
+    private fun addAnchor(anchor: Anchor, anchorUrl: String, scale: Float, rotate: Quaternion? = null) {
         sceneView.addChildNode(
             AnchorNode(sceneView.engine, anchor)
                 .apply {
                     isEditable = false
                     lifecycleScope.launch {
-                        buildModelNode(anchorUrl, scale)?.let { it : ModelNode ->
+                        buildModelNode(anchorUrl, scale, rotate)?.let { it : ModelNode ->
                             addChildNode(it)
                         }
                     }
@@ -117,7 +118,8 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
         )
     }
 
-    private suspend fun buildModelNode(anchorUrl: String, scale: Float): ModelNode? {
+    private suspend fun buildModelNode(anchorUrl: String, scale: Float, rotate: Quaternion? = null): ModelNode? {
+
         sceneView.modelLoader.loadModelInstance(
             anchorUrl
         )?.let { modelInstance ->
@@ -127,6 +129,9 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
 //                centerOrigin = Position(y = -0.5f)
             ).apply {
                 isEditable = false
+                if (rotate != null) {
+                    rotation = Rotation(rotate.x, rotate.y, rotate.z)
+                }
             }
         }
         return null
@@ -145,7 +150,8 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
             (position1.z + position2.z) / 2,
         )
         val anchor = sceneView.session!!.createAnchor(Pose.makeTranslation(midpoint.toFloatArray()))
-        addAnchor(anchor, Constants.cube, 0.015f)
+        addAnchor(anchor, Constants.CUBE, 0.018f)
+        boxes.
         val firstPose = anchor1.pose
         val secondPose = anchor2.pose
         val dx = secondPose.tx() - firstPose.tx()
