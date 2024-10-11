@@ -1,5 +1,6 @@
 package com.eusopht.ardistancecalculation
 
+import android.app.AlertDialog
 import android.os.Bundle
 import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
@@ -21,6 +22,7 @@ import io.github.sceneview.gesture.GestureDetector
 import io.github.sceneview.math.Rotation
 import io.github.sceneview.node.ModelNode
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.sqrt
 
 
@@ -151,7 +153,6 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
         )
         val anchor = sceneView.session!!.createAnchor(Pose.makeTranslation(midpoint.toFloatArray()))
         addAnchor(anchor, Constants.CUBE, 0.018f)
-        boxes.
         val firstPose = anchor1.pose
         val secondPose = anchor2.pose
         val dx = secondPose.tx() - firstPose.tx()
@@ -164,7 +165,7 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
             drawLineBetween(anchor1, newAnchorNode)
             drawLineBetween(newAnchorNode, anchor2)
         }
-        /*val message = String.format(Locale("en"),"%.4f", distance)
+        val message = String.format(Locale("en"),"%.4f", distance)
         AlertDialog
             .Builder(this)
             .setMessage("Distance: $message cm")
@@ -175,7 +176,7 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
                 secondAnchorNode?.detachAnchor()
                 firstAnchorNode = null
                 secondAnchorNode = null
-            }.show() */
+            }.show()
 
         // Get the position of the two nodes
 //        val startPos = firstAnchorNode!!.worldPosition
