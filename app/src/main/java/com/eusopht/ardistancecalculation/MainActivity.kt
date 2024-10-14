@@ -177,43 +177,6 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
                 firstAnchorNode = null
                 secondAnchorNode = null
             }.show()
-
-        // Get the position of the two nodes
-//        val startPos = firstAnchorNode!!.worldPosition
-//        val endPos = secondAnchorNode!!.worldPosition
-//        val startVector = Vector3()
-//        startVector.x = startPos.x
-//        startVector.y = startPos.y
-//        startVector.z = startVector.z
-//
-//        val endVector = Vector3()
-//        endVector.x = endPos.x
-//        endVector.y = endPos.y
-//        endVector.z = endVector.z
-//
-//        // Calculate the direction and length of the line
-//        val difference = Vector3.subtract(endVector, startVector)
-//        val length = difference.length()
-//
-//        // Calculate the center point between the two nodes
-//        val centerPos = Vector3.add(startVector, endVector).scaled(0.5f)
-//        val rotation = Quaternion.lookRotation(difference.normalized(), Vector3.up())
-//        val pose = sceneView.frame!!.camera.pose
-//        val anchor = sceneView.session!!.createAnchor(pose)
-//        sceneView.addChildNode(
-//            AnchorNode(sceneView.engine, anchor)
-//                .apply {
-//                    isEditable = false
-//                    lifecycleScope.launch {
-//                        val url = Constants.MID_POINT_URL
-//                        buildModelNode(url)?.let { it : ModelNode ->
-//                            it.position = Float3(centerPos.x, centerPos.y, centerPos.z)
-//                            it.worldRotation = Rotation(rotation.x, rotation.y, rotation.z)
-//                            addChildNode(it)
-//                        }
-//                    }
-//                }
-//        )
     }
 
 }
