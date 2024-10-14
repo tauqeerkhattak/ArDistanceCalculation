@@ -165,7 +165,7 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
             drawLineBetween(anchor1, newAnchorNode)
             drawLineBetween(newAnchorNode, anchor2)
         }
-        val message = String.format(Locale("en"),"%.4f", distance)
+        val message = String.format(Locale("en"),"%.5f", distance)
         AlertDialog
             .Builder(this)
             .setMessage("Distance: $message cm")
