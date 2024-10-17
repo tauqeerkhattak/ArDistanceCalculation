@@ -16,7 +16,7 @@ navigationUiKtx = "2.7.7"
 sceneview = "2.2.1"
 lifecycleRuntimeKtx = "2.8.6"
 activityCompose = "1.9.2"
-composeBom = "2024.04.01"
+composeBom = "2024.10.00"
 rendering = "1.17.1"
 
 [libraries]
